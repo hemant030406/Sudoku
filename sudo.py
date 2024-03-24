@@ -26,7 +26,7 @@ def get_pyco_out(cnf: list[list],solnum: int) -> list:
     
     return sols[:solnum + 1]
 
-cnf = [[1,-2,3],[-1,2,3],[1,2,-3]]
+# cnf = [[1,-2,3],[-1,2,3],[1,2,-3]]
 # get_pyco_out(cnf)
 
 def min_one_val_cnf() -> list[list]:
@@ -53,14 +53,41 @@ def max_one_val_cnf() -> list[list]:
 
 def row_cnf() -> list[list]:
     cnf = []
+    for row in range(1,rows + 1):
+        for val in range(1,rows + 1):
+            li = []
+            for col in range(1,cols + 1):
+                li.append(int(str(row)+str(col)+str(val)))
+            cnf.append(li)
     return cnf
 
 def col_cnf() -> list[list]:
     cnf = []
+    for col in range(1,cols + 1):
+        for val in range(1,rows + 1):
+            li = []
+            for row in range(1,rows + 1):
+                li.append(int(str(row)+str(col)+str(val)))
+            cnf.append(li)
+    return cnf
+
+def smaller_block_cnf() -> list[list]:
+    cnf = []
+    for col in range(1,cols + 1,3):
+        for val in range(1,rows + 1):
+            li = []
+            for row in range(1,rows + 1,3):
+                li.append(int(str(row)+str(col)+str(val)))
+                li.append(int(str(row)+str(col+1)+str(val)))
+                li.append(int(str(row)+str(col+2)+str(val)))
+            cnf.append(li)
     return cnf
 
 
 # print(min_one_val_cnf())
+# print(len(max_one_val_cnf()))
+# print((row_cnf()))
+# print((col_cnf()))
 
 # if __name__ == '__main__':
 #     import sys 
