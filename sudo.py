@@ -1,7 +1,7 @@
 rows,cols = (9,9)
+init_states = []
 
 def generate_init_states(filename: str) -> None:
-    init_states = []
 
     with open(filename) as f:
         line = f.readline()
@@ -12,8 +12,9 @@ def generate_init_states(filename: str) -> None:
             init_states.append(state)
             line = f.readline()
 
-    # for li in init_states:
-    #     print(li)
+    for li in init_states:
+        print(li)
+        break
             
 def get_pyco_out(cnf: list[list]) -> list:
     import pycosat
