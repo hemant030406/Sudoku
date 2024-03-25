@@ -1,19 +1,24 @@
-rows,cols = (9,9)
+rows, cols = 9, 9
 
-def generate_init_states(filename: str) -> None:
-    init_states = []
 
-    with open(filename) as f:
-        line = f.readline()
-        while line:
-            state = []
-            for i in range(0,rows*cols,rows):
-                state.append(line[i:i+8])
-            init_states.append(state)
+
+
+
+class SudokuSolver:
+    def __init__(self, fp: str) -> None:
+        self.init_states = []
+
+        with open(fp) as f:
             line = f.readline()
-
-    # for li in init_states:
-    #     print(li)
+            while line:
+                state = []
+                for i in range(0,rows*cols,rows):
+                    state.append(line[i:i+8])
+                self.init_states.append(list(map(lambda c: 0 if c == '.' else int(c), state)))
+                line = f.readline()
+        
+        print(*self.init_states)
+        
             
 def get_pyco_out(cnf: list[list]) -> list:
     import pycosat
@@ -114,7 +119,7 @@ print(*filter(lambda x: x > 0, sols_min_one))
 
 if __name__ == '__main__':
     import sys 
-    generate_init_states(sys.argv[1])
+    SudokuSolver(sys.argv[1])
 
 
         
