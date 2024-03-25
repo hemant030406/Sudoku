@@ -23,6 +23,17 @@ def block_check():
                                     clauses.append([-cell(i*3 + a, j*3 + b, k), -cell(i*3 + c, j*3 + d, k)])
     return clauses
 
+def column_check():
+    clauses = []
+    for j in range(9):
+        for k in range(9):
+            clause = [cell(i, j, k) for i in range(9)]
+            clauses.append(clause)
+            for i in range(9):
+                for l in range(i+1, 9):
+                    clauses.append([-cell(i, j, k), -cell(l, j, k)])
+    return clauses
+
 def row_check():
     clauses = []
     for i in range(9):
@@ -49,7 +60,7 @@ class SudokuSolver:
                 self.init_states.append(state)
                 line = f.readline()
         
-        self.base_cnf = self.min_one_val_cnf() + self.col_cnf() + row_check() + self.smaller_block_cnf() + self.max_one_val_cnf()
+        self.base_cnf = self.min_one_val_cnf() + column_check() + row_check() + self.smaller_block_cnf() + self.max_one_val_cnf()
         self.clause_map = tuple({} for _ in range(len(self.init_states)))
         self.clause_list = tuple([] for _ in range(len(self.init_states))) 
 
