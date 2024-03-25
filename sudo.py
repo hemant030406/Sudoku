@@ -5,9 +5,34 @@ import pycosat
 from copy import deepcopy
 rows, cols = 9, 9
 
+def cell(i, j, k):
+    return (i + 1)*100 + (j + 1)*10 + k + 1
 
+def block_check():
+    clauses = []
+    for i in range(3):
+        for j in range(3):
+            for k in range(9):
+                clause = [cell(i*3 + a, j*3 + b, k) for a in range(3) for b in range(3)]
+                clauses.append(clause)
+                for a in range(3):
+                    for b in range(3):
+                        for c in range(a, 3):
+                            for d in range(b, 3):
+                                if a != c or b != d:
+                                    clauses.append([-cell(i*3 + a, j*3 + b, k), -cell(i*3 + c, j*3 + d, k)])
+    return clauses
 
-
+def row_check():
+    clauses = []
+    for i in range(9):
+        for k in range(9):
+            clause = [int(str(i + 1)+str(j + 1)+str(k + 1)) for j in range(9)]
+            clauses.append(clause)
+            for j in range(9):
+                for l in range(j+1, 9):
+                    clauses.append([-int(str(i + 1)+str(j + 1)+str(k + 1)), -int(str(i + 1)+str(l + 1)+str(k + 1))])
+    return clauses
 
 class SudokuSolver:
     def __init__(self, fp: str) -> None:
@@ -24,6 +49,7 @@ class SudokuSolver:
                 self.init_states.append(state)
                 line = f.readline()
         
+        self.base_cnf = self.min_one_val_cnf() + self.col_cnf() + row_check() + self.smaller_block_cnf() + self.max_one_val_cnf()
         self.clause_map = tuple({} for _ in range(len(self.init_states)))
         self.clause_list = tuple([] for _ in range(len(self.init_states))) 
 
@@ -56,12 +82,14 @@ class SudokuSolver:
     def solve(self, state_index: int) -> list:
         # if solnum == 1:
         start = time.time()
-        cnf = self.min_one_val_cnf(state_index) + self.col_cnf(state_index) + self.row_cnf(state_index) + self.smaller_block_cnf(state_index) + self.max_one_val_cnf(state_index)
+        cnf = self.base_cnf + self.gen_case_specific_cnf(state_index)
         print("Clauses:", len(cnf))
+        # print(cnf)
         new_cnf = self.cnf_prop_var_preproc(state_index, cnf)
         self.generate_time += (start2 := time.time()) - start
         # print(new_cnf)
         solved_cnf = pycosat.solve(new_cnf)
+        # print(solved_cnf == 'UNSAT')
         # print(solved_cnf)
         self.solve_time += time.time() - start2
         return list(filter(lambda x: x > 0,solved_cnf))
@@ -85,21 +113,29 @@ class SudokuSolver:
 # cnf = [[1,-2,3],[-1,2,3],[1,2,-3]]
 # get_pyco_out(cnf)
 
-    def min_one_val_cnf(self, state_index: int) -> list[list]:
+    def gen_case_specific_cnf(self, state_index: int) -> list[list[int]]:
+        cnf = []
+        # print(self.init_states[state_index])
+        for i in range(rows):
+            for j in range(cols):
+                if (val := self.init_states[state_index][i][j]):
+                    cnf.append([int(f'{i+1}{j+1}{val}')])
+        # print(cnf)
+        return cnf
+
+    @staticmethod
+    def min_one_val_cnf() -> list[list]:
         cnf = []
         for row in range(1,rows + 1):
             for col in range(1,cols + 1):
                 li = []
-                value_already_present = False
                 for val in range(1,rows + 1):
-                    if self.init_states[state_index][row - 1][col - 1] == val:
-                        value_already_present = True
-                        break
                     li.append(int(str(row)+str(col)+str(val)))
-                if not value_already_present: cnf.append(li)
+                cnf.append(li)
         return cnf
 
-    def max_one_val_cnf(self, state_index: int) -> list[list]:
+    @staticmethod
+    def max_one_val_cnf() -> list[list]:
         cnf = []
         for row in range(1,rows + 1):
             for col in range(1,cols + 1):
@@ -114,55 +150,45 @@ class SudokuSolver:
                         # li.append(-int(str(row)+str(col)+str(val1)))
                         # li.append(-int(str(row)+str(col)+str(val2)))
                         # cnf.append(li)
-                        if self.init_states[state_index][row - 1][col - 1] != val1: li.append(-int(str(row)+str(col)+str(val1)))
-                        if self.init_states[state_index][row - 1][col - 1] != val2: li.append(-int(str(row)+str(col)+str(val2)))
-                        if li: cnf.append(li)
+                        li.append(-int(str(row)+str(col)+str(val1)))
+                        li.append(-int(str(row)+str(col)+str(val2)))
+                        cnf.append(li)
         return cnf
 
-    def row_cnf(self, state_index: int) -> list[list]:
+    @staticmethod
+    def row_cnf() -> list[list]:
         cnf = []
         for row in range(1,rows + 1):
             for val in range(1,rows + 1):
                 li = []
-                value_already_present = False
                 for col in range(1,cols + 1):
-                    if self.init_states[state_index][row - 1][col - 1] == val:
-                        value_already_present = True
-                        break
                     li.append(int(str(row)+str(col)+str(val)))
-                if not value_already_present: cnf.append(li)
+                cnf.append(li)
         return cnf
 
-    def col_cnf(self, state_index: int) -> list[list]:
+    @staticmethod
+    def col_cnf() -> list[list]:
         cnf = []
         for col in range(1,cols + 1):
             for val in range(1,rows + 1):
                 li = []
-                value_already_present = False
                 for row in range(1,rows + 1):
-                    if self.init_states[state_index][row - 1][col - 1] == val:
-                        value_already_present = True
-                        break
                     li.append(int(str(row)+str(col)+str(val)))
-                if not value_already_present: cnf.append(li)
+                cnf.append(li)
         return cnf
 
-    def smaller_block_cnf(self, state_index: int) -> list[list]:
+    @staticmethod
+    def smaller_block_cnf() -> list[list]:
         cnf = []
         for col in range(1,cols + 1,3):
             for val in range(1,rows + 1):
                 for row in range(1,rows + 1,3):
                     li = []
-                    value_already_present = False
                     for i in range(3):
                         for j in range(3):
-                            if self.init_states[state_index][row + i - 1][col + j - 1] == val:
-                                value_already_present = True
-                                break
                             li.append(int(str(row + i)+str(col + j)+str(val)))
-                        if value_already_present: break
-                    if value_already_present: li = []
-                    if li: cnf.append(li)
+                    # li = []
+                    cnf.append(li)
         return cnf
 
 
@@ -200,10 +226,10 @@ def main():
         print("Solving: ", i)
         ans = ss.solve(i)
         solved_board = ss.print_board_from_cnf(i, ans)
-        # if not (validator.isValidSudoku(solved_board)):
-        #     print(":AWDAWDAWDAHWKJLDHAKLWJDHLAKWJHDLAKWJDHALWKJH")
-        #     quit()
-        # else: print("PASSED")
+        if not (validator.isValidSudoku(solved_board)):
+            print(":AWDAWDAWDAHWKJLDHAKLWJDHLAKWJHDLAKWJDHALWKJH")
+            quit()
+        else: print("PASSED")
     print(f"{ss.generate_time = }")
     print(f"{ss.solve_time = }")
 
