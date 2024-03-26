@@ -111,8 +111,11 @@ class SudokuSolver:
         return cnf
 
 
-def main(fp: str):
-    ss = SudokuSolver(fp)
+def main(infp: str = 'p.txt',outfp: str = 'out.txt'):
+    ss = SudokuSolver(infp)
+    outfile = open(outfp,'w')
+    outfile.write('SOLUTION:\n')
+    outfile = open(outfp,'a')
     for i in range(len(ss.init_states)):
         print("Solving: ", i)
         ans = ss.solve(i)
@@ -121,8 +124,21 @@ def main(fp: str):
             print("FAILED")
             quit()
         else: print("PASSED")
+
+        str_write = ''
+        for row in solved_board:
+            for col in row:
+                str_write += str(col)
+        outfile.write(str_write+'\n')
     # print(f"{ss.generate_time = }")
     # print(f"{ss.solve_time = }")
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    if len(sys.argv) > 3:
+        sys.stderr.write('More than expected number of args')
+    elif len(sys.argv) == 3:
+        main(sys.argv[1],sys.argv[2])
+    elif len(sys.argv) == 2:
+        main(sys.argv[1])
+    else:
+        main()
