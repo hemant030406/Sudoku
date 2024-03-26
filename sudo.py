@@ -5,46 +5,6 @@ import pycosat
 from copy import deepcopy
 rows, cols = 9, 9
 
-def cell(i, j, k):
-    return (i + 1)*100 + (j + 1)*10 + k + 1
-
-def block_check():
-    clauses = []
-    for i in range(3):
-        for j in range(3):
-            for k in range(9):
-                clause = [cell(i*3 + a, j*3 + b, k) for a in range(3) for b in range(3)]
-                clauses.append(clause)
-                for a in range(3):
-                    for b in range(3):
-                        for c in range(a, 3):
-                            for d in range(b, 3):
-                                if a != c or b != d:
-                                    clauses.append([-cell(i*3 + a, j*3 + b, k), -cell(i*3 + c, j*3 + d, k)])
-    return clauses
-
-def column_check():
-    clauses = []
-    for j in range(9):
-        for k in range(9):
-            clause = [cell(i, j, k) for i in range(9)]
-            clauses.append(clause)
-            for i in range(9):
-                for l in range(i+1, 9):
-                    clauses.append([-cell(i, j, k), -cell(l, j, k)])
-    return clauses
-
-def row_check():
-    clauses = []
-    for i in range(9):
-        for k in range(9):
-            clause = [int(str(i + 1)+str(j + 1)+str(k + 1)) for j in range(9)]
-            clauses.append(clause)
-            for j in range(9):
-                for l in range(j+1, 9):
-                    clauses.append([-int(str(i + 1)+str(j + 1)+str(k + 1)), -int(str(i + 1)+str(l + 1)+str(k + 1))])
-    return clauses
-
 class SudokuSolver:
     def __init__(self, fp: str) -> None:
         self.init_states = []
@@ -60,13 +20,9 @@ class SudokuSolver:
                 self.init_states.append(state)
                 line = f.readline()
         
-        self.base_cnf = self.min_one_val_cnf() + column_check() + row_check() + self.smaller_block_cnf() + self.max_one_val_cnf()
+        self.base_cnf = self.min_one_val_cnf() + self.col_cnf() + self.row_cnf() + self.smaller_block_cnf() + self.max_one_val_cnf()
         self.clause_map = tuple({} for _ in range(len(self.init_states)))
-        self.clause_list = tuple([] for _ in range(len(self.init_states))) 
-
-        # for s in self.init_states:
-        #     print(*s, sep='\n')
-        #     print('------------------------')  
+        self.clause_list = tuple([] for _ in range(len(self.init_states)))
 
     def cnf_prop_var_preproc(self, state_index: int, cnf: list[list[int]]) -> list[list[int]]:
         self.clause_map[state_index].clear()
@@ -91,38 +47,25 @@ class SudokuSolver:
         return new_cnf
      
     def solve(self, state_index: int) -> list:
-        # if solnum == 1:
-        start = time.time()
+        # start = time.time()
         cnf = self.base_cnf + self.gen_case_specific_cnf(state_index)
-        print("Clauses:", len(cnf))
-        # print(cnf)
-        new_cnf = self.cnf_prop_var_preproc(state_index, cnf)
-        self.generate_time += (start2 := time.time()) - start
-        # print(new_cnf)
-        solved_cnf = pycosat.solve(new_cnf)
-        # print(solved_cnf == 'UNSAT')
-        # print(solved_cnf)
-        self.solve_time += time.time() - start2
+        # print("Clauses:", len(cnf))
+        # new_cnf = self.cnf_prop_var_preproc(state_index, cnf)
+        # self.generate_time += (start2 := time.time()) - start
+        solved_cnf = pycosat.solve(cnf)
+        # self.solve_time += time.time() - start2
         return list(filter(lambda x: x > 0,solved_cnf))
-    
-        # sols = []
-        # for sol in pycosat.itersolve(cnf):
-        #     sols.append(sol)
-    
-        return list(pycosat.itersolve(cnf))
 
 
     def print_board_from_cnf(self, state_index: int, cnf_solved: list[int]):
         board = deepcopy(self.init_states[state_index])
         for prop_var in cnf_solved:
-            row, col, val = str(self.clause_list[state_index][prop_var - 1])
+            # row, col, val = str(self.clause_list[state_index][prop_var - 1])
+            row, col, val = str(prop_var)[0], str(prop_var)[1], str(prop_var)[2]
             board[int(row) - 1][int(col) - 1] = int(val)
         
         print(*board, sep='\n')
         return board
-
-# cnf = [[1,-2,3],[-1,2,3],[1,2,-3]]
-# get_pyco_out(cnf)
 
     def gen_case_specific_cnf(self, state_index: int) -> list[list[int]]:
         cnf = []
@@ -135,100 +78,65 @@ class SudokuSolver:
         return cnf
 
     @staticmethod
-    def min_one_val_cnf() -> list[list]:
+    def min_one_val_cnf() -> list[list[int]]:
         cnf = []
-        for row in range(1,rows + 1):
-            for col in range(1,cols + 1):
+        for row in range(rows):
+            for col in range(cols):
                 li = []
-                for val in range(1,rows + 1):
-                    li.append(int(str(row)+str(col)+str(val)))
+                for val in range(rows):
+                    li.append(int(f'{row + 1}{col + 1}{val + 1}'))
                 cnf.append(li)
         return cnf
 
     @staticmethod
-    def max_one_val_cnf() -> list[list]:
+    def max_one_val_cnf() -> list[list[int]]:
         cnf = []
-        for row in range(1,rows + 1):
-            for col in range(1,cols + 1):
-                # if (val := self.init_states[state_index][row - 1][col - 1]):
-                #     for v in range(1, rows + 1):
-                #         if v == val: continue
-                #         cnf.append([-int(str(row)+str(col)+str(v))])
-                    # cnf.append(l)
-                for val1 in range(1,rows + 1):
-                    for val2 in range(val1 + 1,rows + 1):
-                        li = []
-                        # li.append(-int(str(row)+str(col)+str(val1)))
-                        # li.append(-int(str(row)+str(col)+str(val2)))
-                        # cnf.append(li)
-                        li.append(-int(str(row)+str(col)+str(val1)))
-                        li.append(-int(str(row)+str(col)+str(val2)))
-                        cnf.append(li)
+        for row in range(rows):
+            for col in range(cols):
+                for val1 in range(rows):
+                    for val2 in range(val1 + 1,rows):
+                        cnf.append([-int(f'{row + 1}{col + 1}{val1 + 1}'),-int(f'{row + 1}{col + 1}{val2 + 1}')])
         return cnf
 
     @staticmethod
-    def row_cnf() -> list[list]:
+    def row_cnf() -> list[list[int]]:
         cnf = []
         for row in range(1,rows + 1):
             for val in range(1,rows + 1):
                 li = []
                 for col in range(1,cols + 1):
                     li.append(int(str(row)+str(col)+str(val)))
+                    for nxt_col in range(col + 1,cols + 1):
+                        cnf.append([-int(str(row)+str(col)+str(val)),-int(str(row)+str(nxt_col)+str(val))])
                 cnf.append(li)
+        
         return cnf
 
     @staticmethod
-    def col_cnf() -> list[list]:
+    def col_cnf() -> list[list[int]]:
         cnf = []
         for col in range(1,cols + 1):
             for val in range(1,rows + 1):
                 li = []
                 for row in range(1,rows + 1):
                     li.append(int(str(row)+str(col)+str(val)))
+                    for nxt_row in range(row + 1,rows + 1):
+                        cnf.append([-int(str(row)+str(col)+str(val)),-int(str(nxt_row)+str(col)+str(val))])
                 cnf.append(li)
         return cnf
 
     @staticmethod
-    def smaller_block_cnf() -> list[list]:
+    def smaller_block_cnf() -> list[list[int]]:
         cnf = []
-        for col in range(1,cols + 1,3):
+        for col in range(1,cols+1,3):
             for val in range(1,rows + 1):
                 for row in range(1,rows + 1,3):
                     li = []
                     for i in range(3):
                         for j in range(3):
                             li.append(int(str(row + i)+str(col + j)+str(val)))
-                    # li = []
                     cnf.append(li)
         return cnf
-
-
-# print((min_one_val_cnf()))
-# print(len(max_one_val_cnf())) #last
-# print(len(row_cnf()))
-# print(len(col_cnf()))
-# print(len(smaller_block_cnf()))
-
-# fin_cnf = min_one_val_cnf() + max_one_val_cnf() + row_cnf() + col_cnf() + smaller_block_cnf()
-
-# print(len(fin_cnf))
-# sols_min_one = get_pyco_out(fin_cnf)
-# print(*filter(lambda x: x > 0, sols_min_one))
-
-# sols_min_one = [i for i in get_pyco_out(min_one_val_cnf()) if 100 <= abs(i) < 1000 and '0' not in str(abs(i))]
-# sols_max_one = [i for i in get_pyco_out(max_one_val_cnf()) if 100 <= abs(i) < 1000 and '0' not in str(abs(i))]
-# sols_row = get_pyco_out(row_cnf())
-# sols_col = get_pyco_out(col_cnf())
-# sols_smaller_block = get_pyco_out(smaller_block_cnf())
-
-
-# print(sols_max_one)
-# sol = []
-# for i in sols_min_one:
-#     if i in sols_max_one:
-#         sol.append(i)
-
-# print(sol)
 
 
 def main():
@@ -238,11 +146,11 @@ def main():
         ans = ss.solve(i)
         solved_board = ss.print_board_from_cnf(i, ans)
         if not (validator.isValidSudoku(solved_board)):
-            print(":AWDAWDAWDAHWKJLDHAKLWJDHLAKWJHDLAKWJDHALWKJH")
+            print("FAILED")
             quit()
         else: print("PASSED")
-    print(f"{ss.generate_time = }")
-    print(f"{ss.solve_time = }")
+    # print(f"{ss.generate_time = }")
+    # print(f"{ss.solve_time = }")
 
 def solve_for1():
     ss = SudokuSolver('p.txt')
